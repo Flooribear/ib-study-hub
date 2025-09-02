@@ -27,7 +27,11 @@ import {
 } from 'firebase/auth'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('login')
+  const [activeTab, setActiveTab] = useState(() => {
+    // Try to restore activeTab from localStorage
+    const savedTab = localStorage.getItem('ib-study-hub-activeTab')
+    return savedTab || 'login'
+  })
   const [selectedSubject, setSelectedSubject] = useState('')
   const [question, setQuestion] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -52,7 +56,11 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [isTeacher, setIsTeacher] = useState(false)
   const [teacherSubjects, setTeacherSubjects] = useState([])
-  const [currentSubjectPage, setCurrentSubjectPage] = useState(null)
+  const [currentSubjectPage, setCurrentSubjectPage] = useState(() => {
+    // Try to restore currentSubjectPage from localStorage
+    const savedSubject = localStorage.getItem('ib-study-hub-currentSubjectPage')
+    return savedSubject || null
+  })
   const [subjectNotes, setSubjectNotes] = useState({})
   const [teachers, setTeachers] = useState([])
   
@@ -67,6 +75,19 @@ function App() {
   // Admin states
   const [allUsers, setAllUsers] = useState([])
   const [adminStats, setAdminStats] = useState({})
+  
+  // User detail modal states
+  const [showUserDetail, setShowUserDetail] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [userLogs, setUserLogs] = useState([])
+  
+  // Cache states to prevent unnecessary reloads
+  const [adminDataLoaded, setAdminDataLoaded] = useState(false)
+  const [quizzesLoaded, setQuizzesLoaded] = useState(false)
+  
+  // IP logging states
+  const [userIP, setUserIP] = useState(null)
+  const [ipLogs, setIpLogs] = useState([])
 
   // New teacher states
   const [newTeacherEmail, setNewTeacherEmail] = useState('')
@@ -174,15 +195,18 @@ function App() {
         // Check if user is admin
         if (user.email === 'atharvamehrotra123@gmail.com') {
           setIsAdmin(true)
-          await loadAdminData()
-          // Clean up any existing placeholder notes
-          await cleanupPlaceholderNotes()
+          // Don't load admin data immediately - load it when admin panel is accessed
         }
         
         // Load user's selected subjects from Firestore
         await loadUserSubjects(user.uid)
         // Load teacher data if applicable
         await loadTeacherData(user.uid)
+        
+        // Fetch and log user's IP address
+        const ipAddress = await fetchUserIP()
+        setUserIP(ipAddress)
+        await logUserIP(user.uid, user.email, ipAddress)
         
         // Set appropriate default view mode based on user type
         if (user.email === 'atharvamehrotra123@gmail.com') {
@@ -193,12 +217,22 @@ function App() {
           setGlobalViewMode('student') // Students start in student mode
         }
         
+        // Restore saved tab or default to subjects
+        const savedTab = localStorage.getItem('ib-study-hub-activeTab')
+        if (savedTab && savedTab !== 'login') {
+          setActiveTab(savedTab)
+        } else {
         setActiveTab('subjects')
+        }
       } else {
         setUser(null)
         setIsAdmin(false)
         setIsTeacher(false)
         setActiveTab('login')
+        // Clear saved state when user logs out
+        localStorage.removeItem('ib-study-hub-activeTab')
+        localStorage.removeItem('ib-study-hub-currentSubjectPage')
+        localStorage.removeItem('ib-study-hub-scrollPosition')
       }
       setLoading(false)
     })
@@ -212,6 +246,73 @@ function App() {
       document.body.classList.add('dark-mode')
     }
   }, [])
+
+  // Save activeTab to localStorage whenever it changes
+  useEffect(() => {
+    if (activeTab && activeTab !== 'login') {
+      localStorage.setItem('ib-study-hub-activeTab', activeTab)
+      // Save current scroll position when switching tabs
+      localStorage.setItem('ib-study-hub-scrollPosition', window.scrollY.toString())
+    }
+  }, [activeTab])
+
+  // Save currentSubjectPage to localStorage whenever it changes
+  useEffect(() => {
+    if (currentSubjectPage) {
+      localStorage.setItem('ib-study-hub-currentSubjectPage', currentSubjectPage)
+    } else {
+      localStorage.removeItem('ib-study-hub-currentSubjectPage')
+    }
+  }, [currentSubjectPage])
+
+  // Save scroll position to localStorage
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      if (user && activeTab !== 'login') {
+        localStorage.setItem('ib-study-hub-scrollPosition', window.scrollY.toString())
+      }
+    }
+
+    // Save scroll position on scroll (throttled)
+    let scrollTimeout
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout)
+      scrollTimeout = setTimeout(saveScrollPosition, 100)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      clearTimeout(scrollTimeout)
+    }
+  }, [user, activeTab])
+
+  // Restore scroll position on page load
+  useEffect(() => {
+    if (user && activeTab !== 'login') {
+      const savedScrollPosition = localStorage.getItem('ib-study-hub-scrollPosition')
+      if (savedScrollPosition) {
+        const scrollPosition = parseInt(savedScrollPosition, 10)
+        
+        // Wait for content to load before restoring scroll position
+        const restoreScroll = () => {
+          // Check if content is loaded (no loading states active)
+          const isLoading = Object.values(contentLoading).some(loading => loading)
+          
+          if (!isLoading) {
+            window.scrollTo(0, scrollPosition)
+          } else {
+            // If still loading, wait a bit more
+            setTimeout(restoreScroll, 200)
+          }
+        }
+        
+        // Start restoration process
+        setTimeout(restoreScroll, 100)
+      }
+    }
+  }, [user, activeTab, contentLoading])
 
   // Update selectedSubject when selectedSubjects changes
   useEffect(() => {
@@ -244,6 +345,13 @@ function App() {
       loadAllQuizzes()
     }
   }, [activeTab])
+
+  // Load admin data when admin panel is opened (with caching)
+  useEffect(() => {
+    if (activeTab === 'admin' && isAdmin && !adminDataLoaded) {
+      loadAdminData()
+    }
+  }, [activeTab, isAdmin, adminDataLoaded])
 
   // Load AI configuration when user is authenticated
   useEffect(() => {
@@ -327,27 +435,217 @@ function App() {
     }
   }
 
-  // Load admin data
+  // Fetch user's IP address
+  const fetchUserIP = async () => {
+    try {
+      const response = await fetch('https://api.ipify.org?format=json')
+      const data = await response.json()
+      return data.ip
+    } catch (error) {
+      console.error('Error fetching IP address:', error)
+      // Fallback to a different IP service
+      try {
+        const response = await fetch('https://ipapi.co/json/')
+        const data = await response.json()
+        return data.ip
+      } catch (fallbackError) {
+        console.error('Fallback IP service also failed:', fallbackError)
+        return 'Unknown'
+      }
+    }
+  }
+
+  // Get detailed computer specifications
+  const getComputerSpecs = () => {
+    const specs = {
+      // Basic screen info
+      screenResolution: `${screen.width}x${screen.height}`,
+      screenColorDepth: screen.colorDepth,
+      screenPixelDepth: screen.pixelDepth,
+      screenAvailWidth: screen.availWidth,
+      screenAvailHeight: screen.availHeight,
+      
+      // Browser and platform info
+      userAgent: navigator.userAgent,
+      platform: navigator.platform,
+      vendor: navigator.vendor,
+      vendorSub: navigator.vendorSub,
+      product: navigator.product,
+      productSub: navigator.productSub,
+      
+      // Browser capabilities
+      cookieEnabled: navigator.cookieEnabled,
+      onLine: navigator.onLine,
+      doNotTrack: navigator.doNotTrack,
+      maxTouchPoints: navigator.maxTouchPoints,
+      
+      // Language and locale
+      language: navigator.language,
+      languages: navigator.languages,
+      
+      // Timezone
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezoneOffset: new Date().getTimezoneOffset(),
+      
+      // Hardware concurrency (CPU cores)
+      hardwareConcurrency: navigator.hardwareConcurrency,
+      
+      // Memory info (if available)
+      deviceMemory: navigator.deviceMemory || 'Unknown',
+      
+      // Connection info (if available)
+      connectionType: navigator.connection?.effectiveType || 'Unknown',
+      connectionDownlink: navigator.connection?.downlink || 'Unknown',
+      connectionRtt: navigator.connection?.rtt || 'Unknown',
+      
+      // WebGL info (GPU)
+      webglVendor: 'Unknown',
+      webglRenderer: 'Unknown',
+      
+      // Canvas fingerprinting
+      canvasFingerprint: 'Unknown',
+      
+      // Referrer
+      referrer: document.referrer || 'Direct',
+      
+      // Window info
+      windowInnerWidth: window.innerWidth,
+      windowInnerHeight: window.innerHeight,
+      windowOuterWidth: window.outerWidth,
+      windowOuterHeight: window.outerHeight,
+      
+      // Device pixel ratio
+      devicePixelRatio: window.devicePixelRatio,
+      
+      // Performance info
+      performanceNow: performance.now(),
+      performanceTiming: performance.timing ? {
+        navigationStart: performance.timing.navigationStart,
+        loadEventEnd: performance.timing.loadEventEnd,
+        domContentLoadedEventEnd: performance.timing.domContentLoadedEventEnd
+      } : null
+    }
+    
+    // Try to get WebGL info
+    try {
+      const canvas = document.createElement('canvas')
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+        if (debugInfo) {
+          specs.webglVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
+          specs.webglRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
+        }
+      }
+    } catch (e) {
+      console.log('WebGL info not available')
+    }
+    
+    // Try to get canvas fingerprint
+    try {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      ctx.textBaseline = 'top'
+      ctx.font = '14px Arial'
+      ctx.fillText('Canvas fingerprint', 2, 2)
+      specs.canvasFingerprint = canvas.toDataURL()
+    } catch (e) {
+      console.log('Canvas fingerprint not available')
+    }
+    
+    return specs
+  }
+
+  // Log user IP address and computer specs to Firebase
+  const logUserIP = async (userId, userEmail, ipAddress) => {
+    try {
+      const computerSpecs = getComputerSpecs()
+      
+      await addDoc(collection(db, 'ipLogs'), {
+        userId: userId,
+        userEmail: userEmail,
+        ipAddress: ipAddress,
+        timestamp: new Date(),
+        ...computerSpecs
+      })
+      console.log('IP address and computer specs logged successfully')
+    } catch (error) {
+      console.error('Error logging IP address and specs:', error)
+    }
+  }
+
+  // Load IP logs for a specific user
+  const loadUserIPLogs = async (userId) => {
+    try {
+      console.log('Loading IP logs for user:', userId)
+      
+      // First try with orderBy, if it fails, try without
+      let ipLogsSnapshot
+      try {
+        ipLogsSnapshot = await getDocs(
+          query(
+            collection(db, 'ipLogs'), 
+            where('userId', '==', userId),
+            orderBy('timestamp', 'desc')
+          )
+        )
+      } catch (orderByError) {
+        console.log('OrderBy failed, trying without orderBy:', orderByError)
+        ipLogsSnapshot = await getDocs(
+          query(
+            collection(db, 'ipLogs'), 
+            where('userId', '==', userId)
+          )
+        )
+      }
+      
+      const logs = []
+      ipLogsSnapshot.forEach(doc => {
+        logs.push({ id: doc.id, ...doc.data() })
+      })
+      
+      // Sort manually if orderBy failed
+      logs.sort((a, b) => {
+        const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp)
+        const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp)
+        return timeB - timeA
+      })
+      
+      console.log('IP logs found:', logs.length, 'entries for user:', userId)
+      return logs
+    } catch (error) {
+      console.error('Error loading user IP logs:', error)
+      return []
+    }
+  }
+
+  // Load admin data - OPTIMIZED with parallel queries
   const loadAdminData = async () => {
     try {
-      // Get all users
-      const usersSnapshot = await getDocs(collection(db, 'users'))
+      console.log('Loading admin data in parallel...')
+      
+      // Load all data in parallel instead of sequentially
+      const [usersSnapshot, teachersSnapshot, feedbackSnapshot] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(collection(db, 'teachers')),
+        getDocs(collection(db, 'feedback'))
+      ])
+      
+      // Process users
       const users = []
       usersSnapshot.forEach(doc => {
         users.push({ id: doc.id, ...doc.data() })
       })
       setAllUsers(users)
 
-      // Get teachers
-      const teachersSnapshot = await getDocs(collection(db, 'teachers'))
+      // Process teachers
       const teachers = []
       teachersSnapshot.forEach(doc => {
         teachers.push({ id: doc.id, ...doc.data() })
       })
       setTeachers(teachers)
 
-      // Get feedback stats
-      const feedbackSnapshot = await getDocs(collection(db, 'feedback'))
+      // Process feedback stats
       const feedbackCount = feedbackSnapshot.size
       
       setAdminStats({
@@ -356,8 +654,111 @@ function App() {
         activeUsers: users.filter(u => u.lastUpdated).length,
         totalTeachers: teachers.length
       })
+      
+      setAdminDataLoaded(true)
+      console.log('Admin data loaded successfully')
     } catch (error) {
       console.error('Error loading admin data:', error)
+    }
+  }
+
+  // Open user detail modal
+  const openUserDetail = async (userData) => {
+    console.log('Opening user detail for:', userData.email, 'ID:', userData.id)
+    setSelectedUser(userData)
+    setShowUserDetail(true)
+    
+    // Load both user logs and IP logs in parallel
+    const [userLogs, userIpLogs] = await Promise.all([
+      loadUserLogs(userData.id),
+      loadUserIPLogs(userData.id)
+    ])
+    
+    console.log('Setting IP logs:', userIpLogs.length, 'entries')
+    setIpLogs(userIpLogs)
+  }
+
+  // Load user activity logs - OPTIMIZED with parallel queries
+  const loadUserLogs = async (userId) => {
+    try {
+      console.log('Loading user logs for:', userId)
+      
+      // Load all data in parallel instead of sequentially
+      const [notesSnapshot, updatedNotesSnapshot, quizzesSnapshot, feedbackSnapshot] = await Promise.all([
+        getDocs(query(collection(db, 'notes'), where('createdBy', '==', userId))),
+        getDocs(query(collection(db, 'notes'), where('lastUpdatedBy', '==', userId))),
+        getDocs(query(collection(db, 'quizzes'), where('createdBy', '==', userId))),
+        getDocs(query(collection(db, 'feedback'), where('userId', '==', userId)))
+      ])
+      
+      const logs = []
+      
+      // Process notes created by this user
+      notesSnapshot.forEach(doc => {
+        const data = doc.data()
+        logs.push({
+          id: doc.id,
+          type: 'note_created',
+          action: 'Created note',
+          details: `"${data.title}" in ${data.subject}`,
+          timestamp: data.createdAt,
+          collection: 'notes'
+        })
+      })
+
+      // Process notes updated by this user
+      updatedNotesSnapshot.forEach(doc => {
+        const data = doc.data()
+        if (data.lastUpdatedBy && data.lastUpdatedBy !== data.createdBy) {
+          logs.push({
+            id: doc.id,
+            type: 'note_updated',
+            action: 'Updated note',
+            details: `"${data.title}" in ${data.subject}`,
+            timestamp: data.lastUpdated,
+            collection: 'notes'
+          })
+        }
+      })
+
+      // Process quizzes created by this user
+      quizzesSnapshot.forEach(doc => {
+        const data = doc.data()
+        logs.push({
+          id: doc.id,
+          type: 'quiz_created',
+          action: 'Created quiz',
+          details: `"${data.title}" (${data.subject})`,
+          timestamp: data.createdAt,
+          collection: 'quizzes'
+        })
+      })
+
+      // Process feedback submitted by this user
+      feedbackSnapshot.forEach(doc => {
+        const data = doc.data()
+        logs.push({
+          id: doc.id,
+          type: 'feedback_submitted',
+          action: 'Submitted feedback',
+          details: data.feedback.substring(0, 50) + (data.feedback.length > 50 ? '...' : ''),
+          timestamp: data.timestamp,
+          collection: 'feedback'
+        })
+      })
+
+      // Sort logs by timestamp (newest first)
+      logs.sort((a, b) => {
+        const timeA = a.timestamp?.toDate ? a.timestamp.toDate() : new Date(a.timestamp)
+        const timeB = b.timestamp?.toDate ? b.timestamp.toDate() : new Date(b.timestamp)
+        return timeB - timeA
+      })
+
+      console.log('User logs loaded:', logs.length, 'entries')
+      setUserLogs(logs)
+    } catch (error) {
+      console.error('Error loading user logs:', error)
+      setUserLogs([])
     }
   }
 
@@ -472,6 +873,7 @@ function App() {
         addedAt: new Date(),
         addedBy: user.uid
       })
+      setAdminDataLoaded(false) // Invalidate cache
       await loadAdminData()
     } catch (error) {
       console.error('Error adding teacher permission:', error)
@@ -573,6 +975,7 @@ function App() {
       }, 2000)
       
       // Refresh admin data
+      setAdminDataLoaded(false) // Invalidate cache
       await loadAdminData()
       
       alert('Subjects added successfully!')
@@ -621,6 +1024,7 @@ function App() {
     
     try {
       await deleteDoc(doc(db, 'teachers', teacherId))
+      setAdminDataLoaded(false) // Invalidate cache
       await loadAdminData()
     } catch (error) {
       console.error('Error removing teacher permission:', error)
@@ -971,6 +1375,21 @@ function App() {
       console.error('Error creating quiz:', error)
       showAlert('Error creating quiz. Please try again.', 'error')
     }
+  }
+
+  const cancelQuizCreation = () => {
+    // Reset all quiz creation form data
+    setQuizTitle('')
+    setQuizSubject('')
+    setQuizQuestions([])
+    setCurrentQuestion('')
+    setCurrentAnswer('')
+    setCurrentMarks(1)
+    
+    // Hide the quiz creation interface
+    setShowCreateQuiz(false)
+    
+    showAlert('Quiz creation cancelled.', 'info')
   }
 
   const loadAllQuizzes = async () => {
@@ -1761,6 +2180,9 @@ function App() {
 
   // Navigate to subject page
   const navigateToSubject = async (subjectId) => {
+    // Save current scroll position before navigating
+    localStorage.setItem('ib-study-hub-scrollPosition', window.scrollY.toString())
+    
     setCurrentSubjectPage(subjectId)
     const notes = await loadSubjectNotes(subjectId, isTeacher && teacherSubjects.includes(subjectId))
     setSubjectNotes(prev => ({ ...prev, [subjectId]: notes }))
@@ -1768,6 +2190,8 @@ function App() {
 
   // Go back to main notes view
   const goBackToNotes = () => {
+    // Save current scroll position before going back
+    localStorage.setItem('ib-study-hub-scrollPosition', window.scrollY.toString())
     setCurrentSubjectPage(null)
   }
 
@@ -1975,6 +2399,7 @@ function App() {
       
       try {
         await deleteDoc(doc(db, 'users', userId))
+        setAdminDataLoaded(false) // Invalidate cache
         await loadAdminData()
       } catch (error) {
         console.error('Error deleting user:', error)
@@ -3039,6 +3464,7 @@ function App() {
                       </div>
                     )}
                     
+                    <div className="quiz-creation-buttons">
                     <button 
                       className={`create-quiz-final-btn ${buttonLoadingStates['create-quiz'] ? 'button-loading' : ''} ${buttonSuccessStates['create-quiz'] ? 'button-success' : ''}`}
                       onClick={() => handleButtonClick('create-quiz', createQuiz)}
@@ -3055,6 +3481,15 @@ function App() {
                         '🚀 Create Quiz & Generate Code'
                       )}
                     </button>
+                      
+                      <button 
+                        className="cancel-quiz-btn"
+                        onClick={cancelQuizCreation}
+                        disabled={buttonLoadingStates['create-quiz']}
+                      >
+                        ❌ Cancel
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4139,6 +4574,17 @@ function App() {
             <h2>👑 Admin Control Panel</h2>
             <p className="admin-subtitle">Welcome, {user?.displayName || user?.email}</p>
             
+            {!adminDataLoaded && (
+              <div className="loading-skeleton">
+                <div className="skeleton-stats">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className="skeleton-stat-card"></div>
+                  ))}
+                </div>
+                <div className="skeleton-table"></div>
+              </div>
+            )}
+            
             <div className="admin-stats">
               <div className="stat-card">
                 <h3>Total Users</h3>
@@ -4435,15 +4881,47 @@ function App() {
                   </thead>
                   <tbody>
                     {allUsers.map((userData) => (
-                      <tr key={userData.id}>
+                      <tr key={userData.id} className="user-row" onClick={() => openUserDetail(userData)}>
                         <td>{userData.email}</td>
                         <td>{userData.displayName || 'N/A'}</td>
-                        <td>{userData.selectedSubjects?.length || 0} subjects</td>
+                        <td>
+                          <div className="user-subjects">
+                            {userData.selectedSubjects && userData.selectedSubjects.length > 0 ? (
+                              userData.selectedSubjects.map((subject, index) => {
+                                // Handle both object format {id, name, level, color} and string format (just ID)
+                                if (typeof subject === 'object' && subject.id) {
+                                  // Object format - use the stored data
+                                  return (
+                                    <span key={index} className="user-subject-tag">
+                                      {subject.name}
+                                    </span>
+                                  )
+                                } else {
+                                  // String format - look up the subject details
+                                  const subjectId = typeof subject === 'string' ? subject : subject.id
+                                  const subjectDetails = subjectBlocks
+                                    .flatMap(block => block.subjects)
+                                    .find(s => s.id === subjectId)
+                                  return subjectDetails ? (
+                                    <span key={index} className="user-subject-tag">
+                                      {subjectDetails.name}
+                                    </span>
+                                  ) : null
+                                }
+                              })
+                            ) : (
+                              <span className="no-subjects">No subjects selected</span>
+                            )}
+                          </div>
+                        </td>
                         <td>{userData.lastUpdated ? new Date(userData.lastUpdated.toDate()).toLocaleDateString() : 'Never'}</td>
                         <td>
                           <button 
                             className="delete-user-btn"
-                            onClick={() => deleteUser(userData.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteUser(userData.id)
+                            }}
                             disabled={loadingStates[`delete-user-${userData.id}`]}
                           >
                             {loadingStates[`delete-user-${userData.id}`] ? (
@@ -4457,6 +4935,198 @@ function App() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+
+          </div>
+        )}
+
+        {/* User Detail Modal */}
+        {showUserDetail && selectedUser && (
+          <div className="modal-overlay">
+            <div className="modal user-detail-modal">
+              <div className="modal-header">
+                <h3>👤 User Details: {selectedUser.displayName || selectedUser.email}</h3>
+                <button className="close-modal-btn" onClick={() => setShowUserDetail(false)}>
+                  ×
+                </button>
+              </div>
+              
+              <div className="modal-content">
+                <div className="user-info-section">
+                  <h4>📋 Basic Information</h4>
+                  <div className="user-info-grid">
+                    <div className="info-item">
+                      <label>Email:</label>
+                      <span>{selectedUser.email}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Display Name:</label>
+                      <span>{selectedUser.displayName || 'Not set'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Last Updated:</label>
+                      <span>{selectedUser.lastUpdated ? new Date(selectedUser.lastUpdated.toDate()).toLocaleString() : 'Never'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Account Created:</label>
+                      <span>{selectedUser.createdAt ? new Date(selectedUser.createdAt.toDate()).toLocaleString() : 'Unknown'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="user-subjects-section">
+                  <h4>📚 Selected Subjects</h4>
+                  <div className="user-subjects-detailed">
+                    {selectedUser.selectedSubjects && selectedUser.selectedSubjects.length > 0 ? (
+                      <div className="subjects-grid">
+                        {selectedUser.selectedSubjects.map((subject, index) => {
+                          // Handle both object format {id, name, level, color} and string format (just ID)
+                          if (typeof subject === 'object' && subject.id) {
+                            // Object format - use the stored data
+                            return (
+                              <div key={index} className="subject-card">
+                                <div className="subject-name">{subject.name}</div>
+                                <div className="subject-level">{subject.level}</div>
+                              </div>
+                            )
+                          } else {
+                            // String format - look up the subject details
+                            const subjectId = typeof subject === 'string' ? subject : subject.id
+                            const subjectDetails = subjectBlocks
+                              .flatMap(block => block.subjects)
+                              .find(s => s.id === subjectId)
+                            return subjectDetails ? (
+                              <div key={index} className="subject-card">
+                                <div className="subject-name">{subjectDetails.name}</div>
+                                <div className="subject-level">Unknown Level</div>
+                              </div>
+                            ) : null
+                          }
+                        })}
+                      </div>
+                    ) : (
+                      <div className="no-subjects-message">
+                        <p>This user hasn't selected any subjects yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="user-activity-section">
+                  <h4>📊 Activity Logs</h4>
+                  <div className="activity-logs">
+                    {userLogs.length > 0 ? (
+                      <div className="logs-list">
+                        {userLogs.map((log, index) => (
+                          <div key={index} className="log-item">
+                            <div className="log-header">
+                              <span className={`log-type log-type-${log.type}`}>
+                                {log.type === 'note_created' && '📝'}
+                                {log.type === 'note_updated' && '✏️'}
+                                {log.type === 'quiz_created' && '🎯'}
+                                {log.type === 'feedback_submitted' && '💬'}
+                              </span>
+                              <span className="log-action">{log.action}</span>
+                              <span className="log-time">
+                                {log.timestamp?.toDate ? 
+                                  new Date(log.timestamp.toDate()).toLocaleString() : 
+                                  new Date(log.timestamp).toLocaleString()
+                                }
+                              </span>
+                            </div>
+                            <div className="log-details">{log.details}</div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="no-logs-message">
+                        <p>No activity logs found for this user.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="user-ip-logs-section">
+                  <h4>🌐 IP Address & Computer Specs</h4>
+                  <div className="user-ip-logs-content">
+                    {/* Debug info */}
+                    <div style={{fontSize: '0.8rem', color: '#666', marginBottom: '1rem'}}>
+                      Debug: IP logs count: {ipLogs.length}, Selected user: {selectedUser?.email}
+                    </div>
+                    {ipLogs.length > 0 ? (
+                      <div className="ip-logs-table">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>IP Address</th>
+                              <th>Timestamp</th>
+                              <th>Platform</th>
+                              <th>Hardware</th>
+                              <th>Browser</th>
+                              <th>Network</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ipLogs.map((log, index) => (
+                              <tr key={log.id}>
+                                <td>
+                                  <span className="ip-address">{log.ipAddress}</span>
+                                </td>
+                                <td>
+                                  {log.timestamp?.toDate ? 
+                                    new Date(log.timestamp.toDate()).toLocaleString() : 
+                                    new Date(log.timestamp).toLocaleString()
+                                  }
+                                </td>
+                                <td>
+                                  <div className="platform-info">
+                                    <span className="platform">{log.platform}</span>
+                                    <span className="timezone">{log.timezone}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="hardware-info">
+                                    <span className="resolution">{log.screenResolution}</span>
+                                    <span className="cores">{log.hardwareConcurrency} cores</span>
+                                    <span className="memory">{log.deviceMemory}GB RAM</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="browser-info">
+                                    <span className="vendor">{log.vendor}</span>
+                                    <span className="language">{log.language}</span>
+                                    <span className="webgl" title={`GPU: ${log.webglRenderer}`}>
+                                      {log.webglVendor}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="network-info">
+                                    <span className="connection">{log.connectionType}</span>
+                                    <span className="downlink">{log.connectionDownlink}Mbps</span>
+                                    <span className="rtt">{log.connectionRtt}ms</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="no-ip-logs-message">
+                        <p>No IP logs found for this user yet.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="modal-actions">
+                <button className="cancel-btn" onClick={() => setShowUserDetail(false)}>
+                  Close
+                </button>
               </div>
             </div>
           </div>
@@ -4826,7 +5496,7 @@ Use the toolbar above to format your text!"
 
       {/* Footer */}
       <footer className="footer">
-        <p>© 2024 IB Study Hub - Your comprehensive revision companion</p>
+        <p>© 2025 IB Study Hub - Your comprehensive revision companion</p>
       </footer>
     </div>
   )

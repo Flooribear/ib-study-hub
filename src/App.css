@@ -1978,33 +1978,21 @@ body.dark-mode {
   flex-wrap: wrap;
 }
 
+/* Consolidated Action Button Styles - Base */
 .action-btn {
-  background: white;
-  color: #1e3c72;
-  border: 2px solid #1e3c72;
-  padding: 0.75rem 1.5rem;
+  padding: 1rem 2rem;
+  border: none;
   border-radius: 25px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 500;
+  font-size: 1rem;
   transition: all 0.3s ease;
-}
-
-.dark-mode .action-btn {
-  background: rgba(255, 255, 255, 0.1);
-  color: #64b5f6;
-  border-color: #64b5f6;
-}
-
-.action-btn:hover {
-  background: #1e3c72;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(30, 60, 114, 0.3);
-}
-
-.dark-mode .action-btn:hover {
-  background: #64b5f6;
-  color: #1a1a2e;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 140px;
+  justify-content: center;
 }
 
 /* Admin Section */
@@ -2170,6 +2158,572 @@ body.dark-mode {
 .delete-user-btn:hover {
   background: #ff3742;
   transform: translateY(-2px);
+}
+
+/* User Subject Tags */
+.user-subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 300px;
+}
+
+.user-subject-tag {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.no-subjects {
+  color: #999;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.dark-mode .no-subjects {
+  color: #666;
+}
+
+/* User Row Clickable */
+.user-row {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.user-row:hover {
+  background: rgba(102, 126, 234, 0.1) !important;
+  transform: translateY(-1px);
+}
+
+.dark-mode .user-row:hover {
+  background: rgba(102, 126, 234, 0.2) !important;
+}
+
+/* User Detail Modal */
+.user-detail-modal {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.user-info-section,
+.user-subjects-section,
+.user-activity-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .user-info-section,
+.dark-mode .user-subjects-section,
+.dark-mode .user-activity-section {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-info-section h4,
+.user-subjects-section h4,
+.user-activity-section h4 {
+  color: #1e3c72;
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.dark-mode .user-info-section h4,
+.dark-mode .user-subjects-section h4,
+.dark-mode .user-activity-section h4 {
+  color: #64b5f6;
+}
+
+.user-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.info-item label {
+  font-weight: 600;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dark-mode .info-item label {
+  color: #999;
+}
+
+.info-item span {
+  color: #333;
+  font-size: 1rem;
+}
+
+.dark-mode .info-item span {
+  color: #f0f0f0;
+}
+
+/* Subject Cards */
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.subject-card {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.subject-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.subject-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.subject-level {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.no-subjects-message,
+.no-logs-message {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  font-style: italic;
+}
+
+.dark-mode .no-subjects-message,
+.dark-mode .no-logs-message {
+  color: #999;
+}
+
+/* Activity Logs */
+.logs-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.log-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-left: 4px solid #667eea;
+  transition: all 0.3s ease;
+}
+
+.dark-mode .log-item {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.log-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.log-type {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.log-action {
+  font-weight: 600;
+  color: #1e3c72;
+  flex: 1;
+}
+
+.dark-mode .log-action {
+  color: #64b5f6;
+}
+
+.log-time {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.dark-mode .log-time {
+  color: #999;
+}
+
+.log-details {
+  color: #555;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.dark-mode .log-details {
+  color: #ccc;
+}
+
+/* Log Type Colors */
+.log-type-note_created {
+  color: #28a745;
+}
+
+.log-type-note_updated {
+  color: #ffc107;
+}
+
+.log-type-quiz_created {
+  color: #17a2b8;
+}
+
+.log-type-feedback_submitted {
+  color: #6f42c1;
+}
+
+/* Loading Skeletons */
+.loading-skeleton {
+  margin-bottom: 2rem;
+}
+
+.skeleton-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+}
+
+.skeleton-stat-card {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  height: 120px;
+  border-radius: 15px;
+}
+
+.skeleton-table {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+  height: 300px;
+  border-radius: 15px;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.dark-mode .skeleton-stat-card,
+.dark-mode .skeleton-table {
+  background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+  background-size: 200% 100%;
+}
+
+/* IP Logs Section */
+.admin-ip-logs {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .admin-ip-logs {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.admin-ip-logs h3 {
+  color: #1e3c72;
+  margin-bottom: 1.5rem;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.dark-mode .admin-ip-logs h3 {
+  color: #64b5f6;
+}
+
+.ip-logs-table {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.dark-mode .ip-logs-table {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.ip-logs-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ip-logs-table th {
+  background: #f8f9fa;
+  color: #333;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.dark-mode .ip-logs-table th {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f0f0;
+  border-bottom-color: #444;
+}
+
+.ip-logs-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.dark-mode .ip-logs-table td {
+  border-bottom-color: #444;
+  color: #f0f0f0;
+}
+
+.ip-logs-table tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.dark-mode .ip-logs-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ip-address {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+}
+
+.platform-info,
+.hardware-info,
+.browser-info,
+.network-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.platform,
+.timezone,
+.resolution,
+.cores,
+.memory,
+.vendor,
+.language,
+.webgl,
+.connection,
+.downlink,
+.rtt {
+  font-size: 0.75rem;
+  color: #666;
+  padding: 0.15rem 0.4rem;
+  background: rgba(102, 126, 234, 0.1);
+  border-radius: 6px;
+  display: inline-block;
+  margin-right: 0.3rem;
+  margin-bottom: 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.dark-mode .platform,
+.dark-mode .timezone,
+.dark-mode .resolution,
+.dark-mode .cores,
+.dark-mode .memory,
+.dark-mode .vendor,
+.dark-mode .language,
+.dark-mode .webgl,
+.dark-mode .connection,
+.dark-mode .downlink,
+.dark-mode .rtt {
+  color: #999;
+  background: rgba(102, 126, 234, 0.2);
+}
+
+/* Specific styling for different info types */
+.cores {
+  background: rgba(34, 197, 94, 0.1);
+  color: #059669;
+}
+
+.dark-mode .cores {
+  background: rgba(34, 197, 94, 0.2);
+  color: #10b981;
+}
+
+.memory {
+  background: rgba(168, 85, 247, 0.1);
+  color: #7c3aed;
+}
+
+.dark-mode .memory {
+  background: rgba(168, 85, 247, 0.2);
+  color: #8b5cf6;
+}
+
+.webgl {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.dark-mode .webgl {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.connection {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.dark-mode .connection {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.no-logs {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 2rem;
+}
+
+.dark-mode .no-logs {
+  color: #999;
+}
+
+/* User IP Logs Section in Modal */
+.user-ip-logs-section {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .user-ip-logs-section {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.user-ip-logs-section h4 {
+  color: #1e3c72;
+  margin-bottom: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.dark-mode .user-ip-logs-section h4 {
+  color: #64b5f6;
+}
+
+.user-ip-logs-content .ip-logs-table {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.dark-mode .user-ip-logs-content .ip-logs-table {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.user-ip-logs-content .ip-logs-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-ip-logs-content .ip-logs-table th {
+  background: #f8f9fa;
+  color: #333;
+  padding: 0.8rem;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.85rem;
+}
+
+.dark-mode .user-ip-logs-content .ip-logs-table th {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f0f0f0;
+  border-bottom-color: #444;
+}
+
+.user-ip-logs-content .ip-logs-table td {
+  padding: 0.8rem;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
+  font-size: 0.8rem;
+}
+
+.dark-mode .user-ip-logs-content .ip-logs-table td {
+  border-bottom-color: #444;
+  color: #f0f0f0;
+}
+
+.user-ip-logs-content .ip-logs-table tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.dark-mode .user-ip-logs-content .ip-logs-table tr:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.no-ip-logs-message {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 2rem;
+}
+
+.dark-mode .no-ip-logs-message {
+  color: #999;
 }
 
 /* Footer */
@@ -2440,45 +2994,36 @@ body.dark-mode {
   flex-wrap: wrap;
 }
 
-.action-btn {
-  padding: 1rem 2rem;
-  border: none;
-  border-radius: 25px;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+/* Action button styles consolidated above */
 
 .action-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
+  box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
 }
 
 .action-btn.primary:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
 }
 
 .action-btn.secondary {
-  background: rgba(255, 255, 255, 0.9);
-  color: #333;
-  border: 2px solid #667eea;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
 }
 
 .dark-mode .action-btn.secondary {
-  background: rgba(40, 40, 60, 0.9);
-  color: #f0f0f0;
-  border: 2px solid #667eea;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: white;
 }
 
 .action-btn.secondary:hover {
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
 }
 
 .action-btn.debug {
@@ -3346,12 +3891,7 @@ button:disabled:hover {
   box-shadow: 0 6px 20px rgba(78, 205, 196, 0.4);
 }
 
-/* Teacher Actions */
-.teacher-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
+/* Teacher actions styles consolidated above */
 
 .add-subjects-btn {
   background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
@@ -3420,21 +3960,16 @@ button:disabled:hover {
 }
 
 .action-btn.load-all {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 25px;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
 .action-btn.load-all:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
 .action-btn.clear-db {
@@ -4811,6 +5346,13 @@ button:disabled:hover {
   font-style: italic;
 }
 
+.quiz-creation-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
 .create-quiz-final-btn {
   background: linear-gradient(135deg, #28a745, #20c997);
   color: white;
@@ -4821,8 +5363,8 @@ button:disabled:hover {
   font-weight: 600;
   font-size: 1.2rem;
   transition: all 0.3s ease;
-  width: 100%;
-  margin-top: 2rem;
+  flex: 1;
+  min-width: 200px;
 }
 
 .create-quiz-final-btn:hover {
@@ -4831,6 +5373,31 @@ button:disabled:hover {
 }
 
 .create-quiz-final-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cancel-quiz-btn {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  border: none;
+  padding: 1.5rem 2rem;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  flex: 0 0 auto;
+  min-width: 120px;
+}
+
+.cancel-quiz-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.cancel-quiz-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -5702,13 +6269,16 @@ button:disabled:hover {
 
 /* Teacher Panel AI Quiz Button */
 .action-btn.ai-quiz {
-  background: linear-gradient(135deg, #9c27b0, #673ab7);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
 }
 
 .action-btn.ai-quiz:hover {
-  background: linear-gradient(135deg, #7b1fa2, #5e35b1);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
 }
 
 /* AI Configuration Button */
@@ -6290,6 +6860,15 @@ button:disabled:hover {
 
 .dark-mode .delete-quiz-btn:hover {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.dark-mode .cancel-quiz-btn {
+  background: linear-gradient(135deg, #b91c1c, #991b1b);
+}
+
+.dark-mode .cancel-quiz-btn:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.3);
 }
 
 /* Dark Mode for Student Submissions */
