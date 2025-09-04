@@ -9,7 +9,7 @@ import { getStorage } from "firebase/storage";
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyChtrwXrczV7yxhhoR-3kbX0tI-u6T6_2A",
-  authDomain: "ib-study-hub-fa610.firebaseapp.com",
+  authDomain: "ibstudyhub.net",
   projectId: "ib-study-hub-fa610",
   storageBucket: "ib-study-hub-fa610.firebasestorage.app",
   messagingSenderId: "733206283053",
@@ -29,7 +29,8 @@ const storage = getStorage(app);
 // Initialize Google Auth Provider
 const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({
-  prompt: 'select_account'
+  prompt: 'select_account',
+  hd: 'ibstudyhub.net' // Restrict to your custom domain
 });
 
 // Connect to emulators in development (comment out in production)
